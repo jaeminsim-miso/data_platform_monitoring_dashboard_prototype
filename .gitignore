@@ -16,6 +16,8 @@ eggs/
 .eggs/
 lib/
 lib64/
+# 이 프로젝트의 소스 패키지는 lib/ 에 둔다. 위 packaging용 lib/ 무시 규칙을 무력화.
+!lib/
 parts/
 sdist/
 var/

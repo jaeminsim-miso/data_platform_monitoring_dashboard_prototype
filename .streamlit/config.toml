@@ -1,0 +1,13 @@
+# Streamlit 설정 (커밋 대상). 접속정보 같은 비밀값은 secrets.toml(gitignore)에 둔다.
+
+[browser]
+# 사용량 통계 전송 끔
+gatherUsageStats = false
+
+[server]
+# 파일 저장 시 자동 리로드 — 레이아웃을 빠르게 반복하기 위함
+runOnSave = true
+
+[theme]
+base = "dark"
+primaryColor = "#4FA8FF"
