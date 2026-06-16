@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from lib.datasource.base import DataSource
 from lib.models import PipelineRun, RunStatus, Source
@@ -62,7 +62,7 @@ class SampleDataSource(DataSource):
 
     def __init__(self, seed: int = 42, now: datetime | None = None) -> None:
         self._rng = random.Random(seed)
-        self._now = now or datetime.now()
+        self._now = now or datetime.now(timezone.utc)  # Glue 등 실데이터와 tz 정합
         self._window = timedelta(days=_WINDOW_DAYS)
 
     def fetch_runs(self) -> list[PipelineRun]:
@@ -86,9 +86,10 @@ class SampleDataSource(DataSource):
             started = self._now - self._window * frac
             status = self._pick_status(source, is_latest=(j == 0))
             if status == RunStatus.RUNNING:
-                ended = None
+                ended, duration_s = None, 0
             else:
-                ended = started + timedelta(seconds=self._rng.randint(30, 1800))
+                duration_s = self._rng.randint(30, 1800)
+                ended = started + timedelta(seconds=duration_s)
             runs.append(
                 PipelineRun(
                     source=source,
@@ -99,7 +100,7 @@ class SampleDataSource(DataSource):
                     ended_at=ended,
                     last_run_at=started,
                     message=self._message(status),
-                    extra=self._extra(source, status),
+                    extra=self._extra(source, status, duration_s),
                 )
             )
         return runs
@@ -118,9 +119,14 @@ class SampleDataSource(DataSource):
     def _message(self, status: RunStatus) -> str | None:
         return self._rng.choice(_FAIL_MESSAGES) if status == RunStatus.FAILED else None
 
-    def _extra(self, source: Source, status: RunStatus) -> dict:
+    def _extra(self, source: Source, status: RunStatus, duration_s: int) -> dict:
         if source is Source.GLUE:
-            return {"dpu": self._rng.choice([2, 5, 10]), "worker_type": "G.1X"}
+            dpu = self._rng.choice([2, 5, 10])
+            return {
+                "dpu": dpu,
+                "worker_type": "G.1X",
+                "dpu_hours": dpu * duration_s / 3600,  # 할당 DPU × 실행시간[h]
+            }
         if source is Source.AIRFLOW:
             return {"tasks": self._rng.randint(3, 20)}
         records = 0 if status == RunStatus.FAILED else self._rng.randint(1_000, 500_000)

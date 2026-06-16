@@ -40,6 +40,7 @@ _STATUS_MAP: dict[Source, dict[str, RunStatus]] = {
         "FAILED": RunStatus.FAILED,
         "ERROR": RunStatus.FAILED,
         "TIMEOUT": RunStatus.FAILED,
+        "EXPIRED": RunStatus.FAILED,
         "RUNNING": RunStatus.RUNNING,
         "STARTING": RunStatus.RUNNING,
         "STOPPING": RunStatus.RUNNING,

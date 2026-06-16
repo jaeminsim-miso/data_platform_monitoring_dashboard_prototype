@@ -105,6 +105,8 @@ class SourceSummary:
     subtitle: str | None
     metrics: list[tuple[str, str, str, str]]  # (라벨, 표시문자열, kind, 설명)
     help: str | None = None
+    note: str | None = None  # 헤더에 표시할 작은 안내 (예: 제외된 잡 수)
+    note_detail: str | None = None  # note 의 hover 툴팁 (예: 제외된 잡 이름들)
 
 
 def _fmt_rate(success: int, failed: int) -> str:
@@ -142,20 +144,24 @@ def overall_summary(runs: list[PipelineRun]) -> SourceSummary:
     )
 
 
-def summarize(source: Source, runs: list[PipelineRun]) -> SourceSummary:
+def summarize(
+    source: Source, runs: list[PipelineRun], tail_count: int | None = None
+) -> SourceSummary:
+    """tail_count: Active DAGs / Enabled Connections 실측값(현재 상태 카운트).
+    None 이면 샘플 근사(실행된 서로 다른 파이프라인 수)로 대체."""
     title, subtitle, extra_label, extra_status, extra_kind, tail_label = _SPEC[source]
     running, success, failed = _counts(runs)
     extra = sum(r.status == extra_status for r in runs)
 
     if source is Source.GLUE:
-        # DPU hours = Σ(DPU × 소요시간[h])
-        dpu_hours = sum(
-            (r.extra.get("dpu", 0) or 0) * ((r.duration_seconds or 0) / 3600)
-            for r in runs
-        )
+        # DPU hours: run별로 소스가 계산한 extra["dpu_hours"] 합산 (할당 DPU × 실행시간)
+        dpu_hours = sum(float(r.extra.get("dpu_hours", 0) or 0) for r in runs)
         tail_value = f"{dpu_hours:,.0f}"
+    elif tail_count is not None:
+        # 실데이터: 활성 DAG/커넥션 수 (소스가 별도 조회해 전달)
+        tail_value = f"{tail_count:,}"
     else:
-        # Active DAGs / Enabled Connections = 서로 다른 파이프라인 수
+        # 샘플 근사: 실행된 서로 다른 파이프라인 수
         tail_value = f"{len({r.pipeline_name for r in runs}):,}"
 
     base = [
