@@ -165,12 +165,13 @@ python -c "from streamlit.testing.v1 import AppTest; at = AppTest.from_file('app
 ### AWS Glue (구현됨 — `lib/datasource/glue.py`)
 
 - **인증**: AWS SSO 프로파일(기본 `miso`). 실행 전 `aws sso login --profile miso` 로 세션 갱신.
-- **읽기 전용**: `glue:ListJobs`, `glue:GetJobRuns` 만 사용.
+- **읽기 전용**: `glue:ListJobs`, `glue:GetJobRuns` + `tag:GetResources`(DataLayer 태그 필터용) 만 사용.
+- **표시 대상 필터**: `DataLayer` 태그가 `LINT`/`LEXT`/`STDZ` 인 잡만 표시(기본). Resource Groups Tagging API 로 서버측 필터링 → 잡별 태그 조회 불필요. `data_layers` 설정으로 허용값 변경, `[]` 면 전체.
 - **비용**: 잡 관리 API(ListJobs/GetJobRuns)는 **요청당 과금 없음** (과금은 잡 실행 DPU-시간·Data Catalog 요청에만 해당).
 - **성능**: 잡별 조회를 **병렬화**(ThreadPool 16) + **선택 기간만** 조회 + `st.cache_data(ttl=60)`. 7일 전체 기준 약 50s → 5s.
 - **DPU hours**: 할당 DPU × `ExecutionTime`[h] 합산 (오토스케일/Flex 미사용 전제). 매핑은 `_to_pipeline_run`/`_allocated_dpu` 순수 함수 → AWS 없이 검증 가능.
 - **폴백**: 연결 실패(SSO 만료·권한·네트워크) 시 **샘플 Glue 로 자동 대체 + 경고 배너** → 화면이 깨지지 않음.
-- **설정** (`.streamlit/secrets.toml` `[glue]`, 없어도 기본값 동작): `profile` / `region` / `lookback_days` / `job_names`(해당 잡만).
+- **설정** (`.streamlit/secrets.toml` `[glue]`, 없어도 기본값 동작): `profile` / `region` / `lookback_days` / `job_names`(해당 잡만) / `data_layers`(DataLayer 태그 허용값, 기본 `["LINT","LEXT","STDZ"]`).
 
 > ⚠️ 운영 계정에 닿는 핵심 경로. 읽기 전용·캐싱으로 부하를 억제하지만, 처음엔 `job_names` 로 좁혀 검증 후 전체로 넓히길 권장.
 
