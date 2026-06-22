@@ -52,8 +52,7 @@ _STYLES = """
   border:1px solid rgba(255,255,255,.18); border-radius:.5rem; padding:.5rem .7rem;
   font-size:.78rem; font-weight:400; line-height:1.4; box-shadow:0 8px 24px rgba(0,0,0,.5);
   transition:opacity .12s ease; pointer-events:none; white-space:normal; }
-.dp-note { position:relative; display:inline-block; margin-top:.3rem; font-size:.76rem; color:#8a9099; cursor:help; border-bottom:1px dotted #5a606b; }
-.dp-cell:hover > .dp-tip, .dp-infowrap:hover > .dp-tip, .dp-note:hover > .dp-tip { visibility:visible; opacity:1; }
+.dp-cell:hover > .dp-tip, .dp-infowrap:hover > .dp-tip { visibility:visible; opacity:1; }
 </style>
 """
 
@@ -87,13 +86,9 @@ def render_source_summary(summary: SourceSummary) -> None:
             f"{_tip(summary.help)}</span>"
         )
     sub = f'<div class="dp-sub">{summary.subtitle}</div>' if summary.subtitle else ""
-    note = ""
-    if summary.note:
-        detail = _tip(summary.note_detail) if summary.note_detail else ""
-        note = f'<div class="dp-note">{html.escape(summary.note)}{detail}</div>'
     head = (
         f'<div class="dp-head"><div>'
-        f'<div class="dp-title">{summary.title}{info}</div>{sub}{note}'
+        f'<div class="dp-title">{summary.title}{info}</div>{sub}'
         f"</div>{brand}</div>"
     )
     cells = "".join(

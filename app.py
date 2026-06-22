@@ -62,21 +62,18 @@ def load_runs(
     list[PipelineRun],
     dict[Source, int],
     dict[Source, str],
-    dict[Source, tuple[str, str]],
 ]:
     """선택 기간만큼 실행 이력을 불러온다.
 
-    반환: (runs, tails, errors, notes)
+    반환: (runs, tails, errors)
       - tails:  소스별 tail 실측값(Enabled Connections / Active DAGs)
       - errors: 소스별 연결 실패 메시지(캐시 밖에서 경고 렌더)
-      - notes:  소스별 카드 안내 (라벨, 툴팁) — 예: 제외된 Glue 잡
     소스별로 실패 시 그 소스만 샘플로 폴백한다.
     """
     sample = SampleDataSource().fetch_runs()
     runs: list[PipelineRun] = []
     tails: dict[Source, int] = {}
     errors: dict[Source, str] = {}
-    notes: dict[Source, tuple[str, str]] = {}
 
     def fallback(src: Source, exc: Exception) -> None:
         errors[src] = f"{type(exc).__name__}: {exc}"
@@ -86,13 +83,7 @@ def load_runs(
     try:
         cfg = _glue_config()
         cfg["lookback_days"] = lookback_days
-        glue = GlueDataSource(cfg)
-        runs.extend(glue.fetch_runs())
-        if glue.excluded_jobs:
-            notes[Source.GLUE] = (
-                f"제외된 잡 {len(glue.excluded_jobs)}개",
-                "지표에서 제외: " + ", ".join(glue.excluded_jobs),
-            )
+        runs.extend(GlueDataSource(cfg).fetch_runs())
     except Exception as exc:
         fallback(Source.GLUE, exc)
 
@@ -115,7 +106,7 @@ def load_runs(
         tails[Source.AIRFLOW] = active
     except Exception as exc:
         fallback(Source.AIRFLOW, exc)
-    return runs, tails, errors, notes
+    return runs, tails, errors
 
 
 st.title("Data Platform Pipeline Monitoring Dashboard")
@@ -126,7 +117,7 @@ with picker:
     range_label = st.selectbox("Start date range", list(_RANGES), index=0)
 lookback = _RANGES[range_label]
 
-runs, tails, errors, notes = load_runs(lookback)
+runs, tails, errors = load_runs(lookback)
 for src, msg in errors.items():
     st.warning(f"{src.value} 실데이터 연결 실패 — 샘플로 대체했습니다. ({msg})")
 
@@ -148,6 +139,4 @@ render_source_summary(overall_summary(windowed))
 for source in Source:
     src_runs = [r for r in windowed if r.source == source]
     summary = summarize(source, src_runs, tail_count=tails.get(source))
-    if source in notes:
-        summary.note, summary.note_detail = notes[source]
     render_source_summary(summary)

@@ -105,8 +105,6 @@ class SourceSummary:
     subtitle: str | None
     metrics: list[tuple[str, str, str, str]]  # (라벨, 표시문자열, kind, 설명)
     help: str | None = None
-    note: str | None = None  # 헤더에 표시할 작은 안내 (예: 제외된 잡 수)
-    note_detail: str | None = None  # note 의 hover 툴팁 (예: 제외된 잡 이름들)
 
 
 def _fmt_rate(success: int, failed: int) -> str:
